@@ -44,6 +44,7 @@ public class CameraManager : MonoBehaviour
     public float overviewRotationSpeed = 0.25f;
     private Quaternion targetRotation;
     private bool isRotating;
+    private float rotationAngle;
 
     void Awake()
     {
@@ -145,16 +146,19 @@ public class CameraManager : MonoBehaviour
         // todo при одновременном нажатии на кнопки вращения влево и вправо сбивается угол
         if (Input.GetKeyDown(KeyCode.Q))
         {
+            rotationAngle = 90;
             rotateOverview(90);
         }
         else if (Input.GetKeyDown(KeyCode.E))
         {
+            rotationAngle = -90;
             rotateOverview(-90);
         }
 
         if (isRotating)
         {
-            if (Quaternion.Angle(targetRotation, transform.rotation) > 0.01f)
+            rotationAngle = Quaternion.Angle(targetRotation, transform.rotation);
+            if (rotationAngle > 0.01f)
             {
                 transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, overviewRotationSpeed);
             }
@@ -169,15 +173,35 @@ public class CameraManager : MonoBehaviour
 
     private void rotateOverview(float angle)
     {
-        isRotating = true;
         Vector3 baseRotationAxis = transform.rotation.eulerAngles;
-        float delta = targetRotation.Equals(DEFAULT_ROTATION) ? 0 : Quaternion.Angle(targetRotation, transform.rotation);
-        Debug.Log(delta);
-        if (angle < 0)
+
+        if (isRotating)
         {
-            delta = -delta;
+            // если текущее и новое направления вращения не совпадают
+//            float currentRotationAngle = Quaternion.Angle(targetRotation, transform.rotation);
+//            if (currentRotationAngle > 0 && angle < 0 || currentRotationAngle < 0 && angle > 0)
+//            {
+                // уменьшить целевое вращение на 90 градусов
+                Vector3 targetRotationEulerAngles = targetRotation.eulerAngles;
+//                Debug.Log(targetRotation.eulerAngles);
+                targetRotation = Quaternion.Euler(targetRotationEulerAngles.x, targetRotationEulerAngles.y + angle, targetRotationEulerAngles.z);
+//                Debug.Log(targetRotation.eulerAngles);
+//            }
+
+            float delta = Quaternion.Angle(targetRotation, transform.rotation);
+
+            if (angle < 0)
+            {
+                delta = -delta;
+            }
+
+            targetRotation = Quaternion.Euler(baseRotationAxis.x, baseRotationAxis.y + angle + delta, baseRotationAxis.z);
         }
-        targetRotation = Quaternion.Euler(baseRotationAxis.x, baseRotationAxis.y + angle + delta, baseRotationAxis.z);
+        else
+        {
+            isRotating = true;
+            targetRotation = Quaternion.Euler(baseRotationAxis.x, baseRotationAxis.y + angle, baseRotationAxis.z);
+        }
     }
 
     void LateUpdate()
