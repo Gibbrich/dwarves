@@ -10,7 +10,6 @@ public class CameraManager : MonoBehaviour
     private static readonly string MOUSE_SCROLL_WHEEL_AXIS = "Mouse ScrollWheel";
     private static readonly string HORIZONTAL_AXIS = "Horizontal";
     private static readonly string VERTICAL_AXIS = "Vertical";
-    private static readonly Quaternion DEFAULT_ROTATION = new Quaternion(0, 0, 0, 0);
     // A mouselook behaviour with constraints which operate relative to
     // this gameobject's initial rotation.
     // Only rotates around local X and Y.
@@ -22,51 +21,50 @@ public class CameraManager : MonoBehaviour
     // to have no constraints on an axis, set the rotationRange to 360 or greater.
     private Camera mainCamera;
 
-    public Vector2 rotationRange = new Vector3(60, 60);
-    public float rotationSpeed = 10;
-    public float dampingTime = 0.2f;
-    public bool relative = true;
+    public Vector2 RotationRange = new Vector3(60, 60);
+    public float RotationSpeed = 10;
+    public float DampingTime = 0.2f;
+    public bool IsRelative = true;
 
-    private Vector3 m_TargetAngles;
-    private Vector3 m_FollowAngles;
-    private Vector3 m_FollowVelocity;
-    private Quaternion m_OriginalRotation;
+    private Vector3 targetAngles;
+    private Vector3 followAngles;
+    private Vector3 followVelocity;
+    private Quaternion originalRotation;
 
-    public float movementSpeed = 3f;
+    public float MovementSpeed = 3f;
 
-    public float minZoom = 5.0f;
-    public float maxZoom = 80.0f;
-    public float zoomSpeed = 30f;
-    public float zoomSmoothing = 0.07f;
+    public float MinZoom = 5.0f;
+    public float MaxZoom = 80.0f;
+    public float ZoomSpeed = 30f;
+    public float ZoomSmoothing = 0.07f;
     private float zoom;
 
     [Range(0, 1)]
-    public float overviewRotationSpeed = 0.25f;
+    public float CameraRigRotationSpeed = 0.25f;
     private Quaternion targetRotation;
     private bool isRotating;
-    private float rotationAngle;
 
-    void Awake()
+    private void Awake()
     {
         mainCamera = GetComponentInChildren<Camera>();
     }
 
     // Use this for initialization
-    void Start()
+    private void Start()
     {
-        m_OriginalRotation = transform.localRotation;
+        originalRotation = transform.localRotation;
         zoom = mainCamera.fieldOfView;
     }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         // camera movement
         float x = Input.GetAxis(HORIZONTAL_AXIS);
         float y = Input.GetAxis(VERTICAL_AXIS);
         if (Math.Abs(x) > 0 || Math.Abs(y) > 0)
         {
-            Vector3 rigMovement = new Vector3(x, y).normalized * movementSpeed * Time.deltaTime;
+            Vector3 rigMovement = new Vector3(x, y).normalized * MovementSpeed * Time.deltaTime;
             transform.Translate(rigMovement, Space.World);
         }
 
@@ -76,45 +74,45 @@ public class CameraManager : MonoBehaviour
         if (Input.GetMouseButton(MOUSE_RIGHT_BUTTON))
         {
             // we make initial calculations from the original local rotation
-            transform.localRotation = m_OriginalRotation;
+            transform.localRotation = originalRotation;
 
             // read input from mouse or mobile controls
             float inputH;
             float inputV;
-            if (relative)
+            if (IsRelative)
             {
                 inputH = Input.GetAxis("Mouse X");
                 inputV = Input.GetAxis("Mouse Y");
 
                 // wrap values to avoid springing quickly the wrong way from positive to negative
-                if (m_TargetAngles.y > 180)
+                if (targetAngles.y > 180)
                 {
-                    m_TargetAngles.y -= 360;
-                    m_FollowAngles.y -= 360;
+                    targetAngles.y -= 360;
+                    followAngles.y -= 360;
                 }
-                if (m_TargetAngles.x > 180)
+                if (targetAngles.x > 180)
                 {
-                    m_TargetAngles.x -= 360;
-                    m_FollowAngles.x -= 360;
+                    targetAngles.x -= 360;
+                    followAngles.x -= 360;
                 }
-                if (m_TargetAngles.y < -180)
+                if (targetAngles.y < -180)
                 {
-                    m_TargetAngles.y += 360;
-                    m_FollowAngles.y += 360;
+                    targetAngles.y += 360;
+                    followAngles.y += 360;
                 }
-                if (m_TargetAngles.x < -180)
+                if (targetAngles.x < -180)
                 {
-                    m_TargetAngles.x += 360;
-                    m_FollowAngles.x += 360;
+                    targetAngles.x += 360;
+                    followAngles.x += 360;
                 }
 
                 // with mouse input, we have direct control with no springback required.
-                m_TargetAngles.y += inputH * rotationSpeed;
-                m_TargetAngles.x += inputV * rotationSpeed;
+                targetAngles.y += inputH * RotationSpeed;
+                targetAngles.x += inputV * RotationSpeed;
 
                 // clamp values to allowed range
-                m_TargetAngles.y = Mathf.Clamp(m_TargetAngles.y, -rotationRange.y * 0.5f, rotationRange.y * 0.5f);
-                m_TargetAngles.x = Mathf.Clamp(m_TargetAngles.x, -rotationRange.x * 0.5f, rotationRange.x * 0.5f);
+                targetAngles.y = Mathf.Clamp(targetAngles.y, -RotationRange.y * 0.5f, RotationRange.y * 0.5f);
+                targetAngles.x = Mathf.Clamp(targetAngles.x, -RotationRange.x * 0.5f, RotationRange.x * 0.5f);
             }
             else
             {
@@ -122,50 +120,45 @@ public class CameraManager : MonoBehaviour
                 inputV = Input.mousePosition.y;
 
                 // set values to allowed range
-                m_TargetAngles.y = Mathf.Lerp(-rotationRange.y * 0.5f, rotationRange.y * 0.5f, inputH / Screen.width);
-                m_TargetAngles.x = Mathf.Lerp(-rotationRange.x * 0.5f, rotationRange.x * 0.5f, inputV / Screen.height);
+                targetAngles.y = Mathf.Lerp(-RotationRange.y * 0.5f, RotationRange.y * 0.5f, inputH / Screen.width);
+                targetAngles.x = Mathf.Lerp(-RotationRange.x * 0.5f, RotationRange.x * 0.5f, inputV / Screen.height);
             }
 
             // smoothly interpolate current values to target angles
-            m_FollowAngles = Vector3.SmoothDamp(m_FollowAngles, m_TargetAngles, ref m_FollowVelocity, dampingTime);
+            followAngles = Vector3.SmoothDamp(followAngles, targetAngles, ref followVelocity, DampingTime);
 
             // update the actual gameobject's rotation
-            transform.localRotation = m_OriginalRotation * Quaternion.Euler(-m_FollowAngles.x, m_FollowAngles.y, 0);
+            transform.localRotation = originalRotation * Quaternion.Euler(-followAngles.x, followAngles.y, 0);
         }
         #endregion
 
         // camera zoom in/out
         if (Math.Abs(Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS)) > 0)
         {
-            zoom -= Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS) * zoomSpeed;
-            zoom = Mathf.Clamp(zoom, minZoom, maxZoom);
+            zoom -= Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS) * ZoomSpeed;
+            zoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
         }
 
         // overview rotation
         // todo change rotation trigger from key to UI button
-        // todo при одновременном нажатии на кнопки вращения влево и вправо сбивается угол
         if (Input.GetKeyDown(KeyCode.Q))
         {
-            rotationAngle = 90;
             rotateOverview(90);
         }
         else if (Input.GetKeyDown(KeyCode.E))
         {
-            rotationAngle = -90;
             rotateOverview(-90);
         }
 
         if (isRotating)
         {
-            rotationAngle = Quaternion.Angle(targetRotation, transform.rotation);
-            if (rotationAngle > 0.01f)
+            if (Quaternion.Angle(targetRotation, transform.rotation) > 0.01f)
             {
-                transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, overviewRotationSpeed);
+                transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, CameraRigRotationSpeed);
             }
             else
             {
                 transform.rotation = targetRotation;
-                targetRotation = DEFAULT_ROTATION;
                 isRotating = false;
             }
         }
@@ -173,39 +166,21 @@ public class CameraManager : MonoBehaviour
 
     private void rotateOverview(float angle)
     {
-        Vector3 baseRotationAxis = transform.rotation.eulerAngles;
-
         if (isRotating)
         {
-            // если текущее и новое направления вращения не совпадают
-//            float currentRotationAngle = Quaternion.Angle(targetRotation, transform.rotation);
-//            if (currentRotationAngle > 0 && angle < 0 || currentRotationAngle < 0 && angle > 0)
-//            {
-                // уменьшить целевое вращение на 90 градусов
-                Vector3 targetRotationEulerAngles = targetRotation.eulerAngles;
-//                Debug.Log(targetRotation.eulerAngles);
-                targetRotation = Quaternion.Euler(targetRotationEulerAngles.x, targetRotationEulerAngles.y + angle, targetRotationEulerAngles.z);
-//                Debug.Log(targetRotation.eulerAngles);
-//            }
-
-            float delta = Quaternion.Angle(targetRotation, transform.rotation);
-
-            if (angle < 0)
-            {
-                delta = -delta;
-            }
-
-            targetRotation = Quaternion.Euler(baseRotationAxis.x, baseRotationAxis.y + angle + delta, baseRotationAxis.z);
+            Vector3 targetRotationVector = targetRotation.eulerAngles;
+            targetRotation = Quaternion.Euler(targetRotationVector.x, targetRotationVector.y + angle, targetRotationVector.z);
         }
         else
         {
             isRotating = true;
-            targetRotation = Quaternion.Euler(baseRotationAxis.x, baseRotationAxis.y + angle, baseRotationAxis.z);
+            Vector3 currentRotationVector = transform.rotation.eulerAngles;
+            targetRotation = Quaternion.Euler(currentRotationVector.x, currentRotationVector.y + angle, currentRotationVector.z);
         }
     }
 
-    void LateUpdate()
+    private void LateUpdate()
     {
-        mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, zoom, zoomSmoothing);
+        mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, zoom, ZoomSmoothing);
     }
 }

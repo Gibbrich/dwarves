@@ -344,7 +344,7 @@ MonoBehaviour:
   maxZoom: 80
   zoomSpeed: 30
   zoomSmoothing: 0.07
-  overviewRotationSpeed: 0.1
+  overviewRotationSpeed: 0.15
 --- !u!1 &424386400
 GameObject:
   m_ObjectHideFlags: 0
