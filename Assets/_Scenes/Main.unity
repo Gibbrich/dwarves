@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657844, g: 0.49641222, b: 0.57481694, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657868, g: 0.49641263, b: 0.57481706, a: 1}
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
@@ -335,16 +335,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f81dec0105218284c8d883e8e87f41c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rotationRange: {x: 60, y: 60}
-  rotationSpeed: 10
-  dampingTime: 0.2
-  relative: 1
-  movementSpeed: 10
-  minZoom: 5
-  maxZoom: 80
-  zoomSpeed: 30
-  zoomSmoothing: 0.07
-  overviewRotationSpeed: 0.15
+  RotationRange: {x: 60, y: 60}
+  RotationSpeed: 10
+  DampingTime: 0.2
+  IsRelative: 1
+  MovementSpeed: 3
+  MinZoom: 5
+  MaxZoom: 80
+  ZoomSpeed: 30
+  ZoomSmoothing: 0.07
+  CameraRigRotationSpeed: 0.15
 --- !u!1 &424386400
 GameObject:
   m_ObjectHideFlags: 0

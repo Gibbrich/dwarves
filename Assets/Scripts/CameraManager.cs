@@ -70,8 +70,7 @@ public class CameraManager : MonoBehaviour
 
         #region CameraRotation
         // camera rotation
-        // todo при попытке изменить угол обзора после того, как overview был изменён, overview возвращается к начальному значению - поправить
-        if (Input.GetMouseButton(MOUSE_RIGHT_BUTTON))
+        if (Input.GetMouseButton(MOUSE_RIGHT_BUTTON) && !isRotating)
         {
             // we make initial calculations from the original local rotation
             transform.localRotation = originalRotation;
@@ -166,6 +165,11 @@ public class CameraManager : MonoBehaviour
 
     private void rotateOverview(float angle)
     {
+        // change limitations for camera rotation according to changed overview angle
+        Vector3 originalRotationVector = originalRotation.eulerAngles;
+        originalRotationVector.y += angle;
+        originalRotation = Quaternion.Euler(originalRotationVector);
+        
         if (isRotating)
         {
             Vector3 targetRotationVector = targetRotation.eulerAngles;
