@@ -6,10 +6,12 @@ using UnityEngine;
 
 public class CameraManager : MonoBehaviour
 {
-    private static readonly int MOUSE_RIGHT_BUTTON = 1;
-    private static readonly string MOUSE_SCROLL_WHEEL_AXIS = "Mouse ScrollWheel";
-    private static readonly string HORIZONTAL_AXIS = "Horizontal";
-    private static readonly string VERTICAL_AXIS = "Vertical";
+    private const int MOUSE_RIGHT_BUTTON = 1;
+    private const string MOUSE_SCROLL_WHEEL_AXIS = "Mouse ScrollWheel";
+    private const string HORIZONTAL_AXIS = "Horizontal";
+
+    private const string VERTICAL_AXIS = "Vertical";
+
     // A mouselook behaviour with constraints which operate relative to
     // this gameobject's initial rotation.
     // Only rotates around local X and Y.
@@ -44,9 +46,12 @@ public class CameraManager : MonoBehaviour
     private Quaternion targetRotation;
     private bool isRotating;
 
+    private OverviewRotation overviewRotation;
+
     private void Awake()
     {
         mainCamera = GetComponentInChildren<Camera>();
+        overviewRotation = OverviewRotation.Northward;
     }
 
     // Use this for initialization
@@ -60,15 +65,35 @@ public class CameraManager : MonoBehaviour
     private void Update()
     {
         // camera movement
-        float x = Input.GetAxis(HORIZONTAL_AXIS);
-        float y = Input.GetAxis(VERTICAL_AXIS);
+        float x = Input.GetAxisRaw(HORIZONTAL_AXIS);
+        float y = Input.GetAxisRaw(VERTICAL_AXIS);
         if (Math.Abs(x) > 0 || Math.Abs(y) > 0)
         {
-            Vector3 rigMovement = new Vector3(x, y).normalized * MovementSpeed * Time.deltaTime;
+            Vector3 rigMovement;
+
+            switch (overviewRotation)
+            {
+                case OverviewRotation.Northward:
+                    rigMovement = new Vector3(x, y).normalized * MovementSpeed * Time.deltaTime;
+                    break;
+                case OverviewRotation.Eastward:
+                    rigMovement = new Vector3(0, y, -x).normalized * MovementSpeed * Time.deltaTime;
+                    break;
+                case OverviewRotation.Westward:
+                    rigMovement = new Vector3(0, y, x).normalized * MovementSpeed * Time.deltaTime;
+                    break;
+                case OverviewRotation.Southward:
+                    rigMovement = new Vector3(-x, y).normalized * MovementSpeed * Time.deltaTime;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
             transform.Translate(rigMovement, Space.World);
         }
 
         #region CameraRotation
+
         // camera rotation
         if (Input.GetMouseButton(MOUSE_RIGHT_BUTTON) && !isRotating)
         {
@@ -129,6 +154,7 @@ public class CameraManager : MonoBehaviour
             // update the actual gameobject's rotation
             transform.localRotation = originalRotation * Quaternion.Euler(-followAngles.x, followAngles.y, 0);
         }
+
         #endregion
 
         // camera zoom in/out
@@ -173,18 +199,47 @@ public class CameraManager : MonoBehaviour
         if (isRotating)
         {
             Vector3 targetRotationVector = targetRotation.eulerAngles;
-            targetRotation = Quaternion.Euler(targetRotationVector.x, targetRotationVector.y + angle, targetRotationVector.z);
+            targetRotation = Quaternion.Euler(targetRotationVector.x, targetRotationVector.y + angle,
+                targetRotationVector.z);
         }
         else
         {
             isRotating = true;
             Vector3 currentRotationVector = transform.rotation.eulerAngles;
-            targetRotation = Quaternion.Euler(currentRotationVector.x, currentRotationVector.y + angle, currentRotationVector.z);
+            targetRotation = Quaternion.Euler(currentRotationVector.x, currentRotationVector.y + angle,
+                currentRotationVector.z);
+        }
+
+        // assume that rotate we can only by 90 degrees in every direction
+        switch (overviewRotation)
+        {
+            case OverviewRotation.Northward:
+                overviewRotation = angle > 0 ? OverviewRotation.Eastward : OverviewRotation.Westward;
+                break;
+            case OverviewRotation.Eastward:
+                overviewRotation = angle > 0 ? OverviewRotation.Southward : OverviewRotation.Northward;
+                break;
+            case OverviewRotation.Westward:
+                overviewRotation = angle > 0 ? OverviewRotation.Northward : OverviewRotation.Southward;
+                break;
+            case OverviewRotation.Southward:
+                overviewRotation = angle > 0 ? OverviewRotation.Westward : OverviewRotation.Eastward;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
         }
     }
 
     private void LateUpdate()
     {
         mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, zoom, ZoomSmoothing);
+    }
+
+    private enum OverviewRotation
+    {
+        Northward,
+        Eastward,
+        Westward,
+        Southward
     }
 }
