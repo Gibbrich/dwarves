@@ -45,13 +45,27 @@ public class CameraManager : MonoBehaviour
     public float CameraRigRotationSpeed = 0.25f;
     private Quaternion targetRotation;
     private bool isRotating;
+    
+    private List<Transform> overviewPoints;
+    private Vector3 targetPosition;
+    private bool isMoving;
 
     private OverviewRotation overviewRotation;
+    private List<MeshRenderer> meshes;
 
     private void Awake()
     {
         mainCamera = GetComponentInChildren<Camera>();
         overviewRotation = OverviewRotation.Northward;
+        
+        // get all objects, which can be faded
+        meshes = new List<MeshRenderer>();
+        foreach (var environmentObject in GameObject.FindGameObjectsWithTag("Hidable"))
+        {
+            meshes.AddRange(environmentObject.GetComponentsInChildren<MeshRenderer>()); 
+        }
+
+        overviewPoints = new List<Transform>(GameObject.Find("TargetCameraRigMovement").GetComponentsInChildren<Transform>());
     }
 
     // Use this for initialization
@@ -59,14 +73,16 @@ public class CameraManager : MonoBehaviour
     {
         originalRotation = transform.localRotation;
         zoom = mainCamera.fieldOfView;
+        
+        HideMapSection();
     }
 
     // Update is called once per frame
     private void Update()
     {
         // camera movement
-        float x = Input.GetAxisRaw(HORIZONTAL_AXIS);
-        float y = Input.GetAxisRaw(VERTICAL_AXIS);
+        var x = Input.GetAxisRaw(HORIZONTAL_AXIS);
+        var y = Input.GetAxisRaw(VERTICAL_AXIS);
         if (Math.Abs(x) > 0 || Math.Abs(y) > 0)
         {
             Vector3 rigMovement;
@@ -168,11 +184,13 @@ public class CameraManager : MonoBehaviour
         // todo change rotation trigger from key to UI button
         if (Input.GetKeyDown(KeyCode.Q))
         {
-            rotateOverview(90);
+            RotateOverview(90);
+            MoveOverviewPoint();
         }
         else if (Input.GetKeyDown(KeyCode.E))
         {
-            rotateOverview(-90);
+            RotateOverview(-90);
+            MoveOverviewPoint();
         }
 
         if (isRotating)
@@ -187,11 +205,24 @@ public class CameraManager : MonoBehaviour
                 isRotating = false;
             }
         }
+
+        if (isMoving)
+        {
+            if (Vector3.Distance(targetPosition, transform.position) > 0.01f)
+            {
+                transform.position = Vector3.Lerp(transform.position, targetPosition, CameraRigRotationSpeed);
+            }
+            else
+            {
+                transform.position = targetPosition;
+                isMoving = false;
+            }
+        }
     }
 
-    private void rotateOverview(float angle)
+    private void RotateOverview(float angle)
     {
-        // change limitations for camera rotation according to changed overview angle
+        // change limitations for camera rotation according to changed overview
         Vector3 originalRotationVector = originalRotation.eulerAngles;
         originalRotationVector.y += angle;
         originalRotation = Quaternion.Euler(originalRotationVector);
@@ -228,11 +259,93 @@ public class CameraManager : MonoBehaviour
             default:
                 throw new ArgumentOutOfRangeException();
         }
+
+        HideMapSection();
+    }
+
+    private void MoveOverviewPoint()
+    {
+        // move overview point
+        // todo list of predefined overview points - temporal decision. Need to implement algorithm for
+        // searching nearest overview point
+        var nearestDistance = float.NaN;
+        var tempTargetPosition = new Vector3();
+        foreach (var point in overviewPoints)
+        {
+            if (float.IsNaN(nearestDistance) || Vector3.Distance(transform.position, point.position) < nearestDistance)
+            {
+                tempTargetPosition = point.position;
+                nearestDistance = Vector3.Distance(transform.position, point.transform.position);
+            }
+        }
+
+        targetPosition = tempTargetPosition;
+        isMoving = true;
     }
 
     private void LateUpdate()
     {
         mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, zoom, ZoomSmoothing);
+    }
+
+    private void HideMapSection()
+    {
+        var positionZ = transform.position.z;
+        var positionX = transform.position.x;
+
+        switch (overviewRotation)
+        {
+            case OverviewRotation.Northward:
+                ShowAllMeshes();
+                foreach (var mesh in meshes)
+                {
+                    if (mesh.gameObject.transform.position.z < positionZ)
+                    {
+                        mesh.enabled = false;
+                    }
+                }
+                break;
+            case OverviewRotation.Eastward:
+                ShowAllMeshes();
+                foreach (var mesh in meshes)
+                {
+                    if (mesh.gameObject.transform.position.x < positionX)
+                    {
+                        mesh.enabled = false;
+                    }
+                }
+                break;
+            case OverviewRotation.Westward:
+                ShowAllMeshes();
+                foreach (var mesh in meshes)
+                {
+                    if (mesh.gameObject.transform.position.x > positionX)
+                    {
+                        mesh.enabled = false;
+                    }
+                }
+                break;
+            case OverviewRotation.Southward:
+                ShowAllMeshes();
+                foreach (var mesh in meshes)
+                {
+                    if (mesh.gameObject.transform.position.z > positionZ)
+                    {
+                        mesh.enabled = false;
+                    }
+                }
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void ShowAllMeshes()
+    {
+        foreach (var mesh in meshes)
+        {
+            mesh.enabled = true;
+        }
     }
 
     private enum OverviewRotation
