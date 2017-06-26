@@ -173,6 +173,34 @@ public class CameraManager : MonoBehaviour
 
         #endregion
 
+        // center camera
+        if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.Keypad5))
+        {
+            float rotationY;
+            switch (overviewRotation)
+            {
+                case OverviewRotation.Northward:
+                    rotationY = 0;
+                    break;
+                case OverviewRotation.Eastward:
+                    rotationY = 90;
+                    break;
+                case OverviewRotation.Westward:
+                    rotationY = -90;
+                    break;
+                case OverviewRotation.Southward:
+                    rotationY = 180;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+            // reset cameraRotation angles
+            targetAngles = Vector3.zero;
+            followAngles = Vector3.zero;
+            transform.localEulerAngles = new Vector3(10, rotationY, 0);
+        }
+        
         // camera zoom in/out
         if (Math.Abs(Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS)) > 0)
         {
