@@ -9,7 +9,6 @@ public class CameraManager : MonoBehaviour
     private const int MOUSE_RIGHT_BUTTON = 1;
     private const string MOUSE_SCROLL_WHEEL_AXIS = "Mouse ScrollWheel";
     private const string HORIZONTAL_AXIS = "Horizontal";
-
     private const string VERTICAL_AXIS = "Vertical";
 
     // A mouselook behaviour with constraints which operate relative to
@@ -24,7 +23,10 @@ public class CameraManager : MonoBehaviour
     private Camera mainCamera;
 
     public Vector2 RotationRange = new Vector3(60, 60);
-    public float RotationSpeed = 10;
+
+    // variable that determine the speed of rotation
+    public float RotationSpeed = 5;
+
     public float DampingTime = 0.2f;
     public bool IsRelative = true;
 
@@ -41,11 +43,10 @@ public class CameraManager : MonoBehaviour
     public float ZoomSmoothing = 0.07f;
     private float zoom;
 
-    [Range(0, 1)]
-    public float CameraRigRotationSpeed = 0.25f;
+    [Range(0, 1)] public float CameraRigRotationSpeed = 0.25f;
     private Quaternion targetRotation;
     private bool isRotating;
-    
+
     private List<Transform> overviewPoints;
     private Vector3 targetPosition;
     private bool isMoving;
@@ -53,19 +54,34 @@ public class CameraManager : MonoBehaviour
     private OverviewRotation overviewRotation;
     private List<MeshRenderer> meshes;
 
+    // variable that determine the speed of lerping (deceleration)
+    public float LerpSpeed = 2.0f;
+
+    // variable that holds the current rotation speed
+    private float speed;
+
+    // timer to check whether the touch is a valid rotation, to prevent camera jerking on mobile device
+    private float holdTimer = 0.0f;
+
+    // variable to hold the x-axis from mouse
+    private float xAxis = 0.0f;
+
+    private int lastTouch = 0;
+
     private void Awake()
     {
         mainCamera = GetComponentInChildren<Camera>();
         overviewRotation = OverviewRotation.Northward;
-        
+
         // get all objects, which can be faded
         meshes = new List<MeshRenderer>();
-        foreach (var environmentObject in GameObject.FindGameObjectsWithTag("Hidable"))
+        foreach (GameObject environmentObject in GameObject.FindGameObjectsWithTag("Hidable"))
         {
-            meshes.AddRange(environmentObject.GetComponentsInChildren<MeshRenderer>()); 
+            meshes.AddRange(environmentObject.GetComponentsInChildren<MeshRenderer>());
         }
 
-        overviewPoints = new List<Transform>(GameObject.Find("TargetCameraRigMovement").GetComponentsInChildren<Transform>());
+        overviewPoints =
+            new List<Transform>(GameObject.Find("TargetCameraRigMovement").GetComponentsInChildren<Transform>());
     }
 
     // Use this for initialization
@@ -73,106 +89,13 @@ public class CameraManager : MonoBehaviour
     {
         originalRotation = transform.localRotation;
         zoom = mainCamera.fieldOfView;
-        
-        HideMapSection();
     }
 
     // Update is called once per frame
     private void Update()
     {
-        // camera movement
-        var x = Input.GetAxisRaw(HORIZONTAL_AXIS);
-        var y = Input.GetAxisRaw(VERTICAL_AXIS);
-        if (Math.Abs(x) > 0 || Math.Abs(y) > 0)
-        {
-            Vector3 rigMovement;
-
-            switch (overviewRotation)
-            {
-                case OverviewRotation.Northward:
-                    rigMovement = new Vector3(x, y).normalized * MovementSpeed * Time.deltaTime;
-                    break;
-                case OverviewRotation.Eastward:
-                    rigMovement = new Vector3(0, y, -x).normalized * MovementSpeed * Time.deltaTime;
-                    break;
-                case OverviewRotation.Westward:
-                    rigMovement = new Vector3(0, y, x).normalized * MovementSpeed * Time.deltaTime;
-                    break;
-                case OverviewRotation.Southward:
-                    rigMovement = new Vector3(-x, y).normalized * MovementSpeed * Time.deltaTime;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-
-            transform.Translate(rigMovement, Space.World);
-        }
-
-        #region CameraRotation
-
-        // camera rotation
-        if (Input.GetMouseButton(MOUSE_RIGHT_BUTTON) && !isRotating)
-        {
-            // we make initial calculations from the original local rotation
-            transform.localRotation = originalRotation;
-
-            // read input from mouse or mobile controls
-            float inputH;
-            float inputV;
-            if (IsRelative)
-            {
-                inputH = Input.GetAxis("Mouse X");
-                inputV = Input.GetAxis("Mouse Y");
-
-                // wrap values to avoid springing quickly the wrong way from positive to negative
-                if (targetAngles.y > 180)
-                {
-                    targetAngles.y -= 360;
-                    followAngles.y -= 360;
-                }
-                if (targetAngles.x > 180)
-                {
-                    targetAngles.x -= 360;
-                    followAngles.x -= 360;
-                }
-                if (targetAngles.y < -180)
-                {
-                    targetAngles.y += 360;
-                    followAngles.y += 360;
-                }
-                if (targetAngles.x < -180)
-                {
-                    targetAngles.x += 360;
-                    followAngles.x += 360;
-                }
-
-                // with mouse input, we have direct control with no springback required.
-                targetAngles.y += inputH * RotationSpeed;
-                targetAngles.x += inputV * RotationSpeed;
-
-                // clamp values to allowed range
-                targetAngles.y = Mathf.Clamp(targetAngles.y, -RotationRange.y * 0.5f, RotationRange.y * 0.5f);
-                targetAngles.x = Mathf.Clamp(targetAngles.x, -RotationRange.x * 0.5f, RotationRange.x * 0.5f);
-            }
-            else
-            {
-                inputH = Input.mousePosition.x;
-                inputV = Input.mousePosition.y;
-
-                // set values to allowed range
-                targetAngles.y = Mathf.Lerp(-RotationRange.y * 0.5f, RotationRange.y * 0.5f, inputH / Screen.width);
-                targetAngles.x = Mathf.Lerp(-RotationRange.x * 0.5f, RotationRange.x * 0.5f, inputV / Screen.height);
-            }
-
-            // smoothly interpolate current values to target angles
-            followAngles = Vector3.SmoothDamp(followAngles, targetAngles, ref followVelocity, DampingTime);
-
-            // update the actual gameobject's rotation
-            transform.localRotation = originalRotation * Quaternion.Euler(-followAngles.x, followAngles.y, 0);
-        }
-
-        #endregion
-
+        horizontalRotation();
+        
         // center camera
         if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.Keypad5))
         {
@@ -200,7 +123,7 @@ public class CameraManager : MonoBehaviour
             followAngles = Vector3.zero;
             transform.localEulerAngles = new Vector3(10, rotationY, 0);
         }
-        
+
         // camera zoom in/out
         if (Math.Abs(Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS)) > 0)
         {
@@ -254,7 +177,7 @@ public class CameraManager : MonoBehaviour
         Vector3 originalRotationVector = originalRotation.eulerAngles;
         originalRotationVector.y += angle;
         originalRotation = Quaternion.Euler(originalRotationVector);
-        
+
         if (isRotating)
         {
             Vector3 targetRotationVector = targetRotation.eulerAngles;
@@ -287,8 +210,6 @@ public class CameraManager : MonoBehaviour
             default:
                 throw new ArgumentOutOfRangeException();
         }
-
-        HideMapSection();
     }
 
     private void MoveOverviewPoint()
@@ -296,9 +217,9 @@ public class CameraManager : MonoBehaviour
         // move overview point
         // todo list of predefined overview points - temporal decision. Need to implement algorithm for
         // searching nearest overview point
-        var nearestDistance = float.NaN;
-        var tempTargetPosition = new Vector3();
-        foreach (var point in overviewPoints)
+        float nearestDistance = float.NaN;
+        Vector3 tempTargetPosition = new Vector3();
+        foreach (Transform point in overviewPoints)
         {
             if (float.IsNaN(nearestDistance) || Vector3.Distance(transform.position, point.position) < nearestDistance)
             {
@@ -311,69 +232,52 @@ public class CameraManager : MonoBehaviour
         isMoving = true;
     }
 
+    private void horizontalRotation()
+    {
+        if (Input.touchCount < 2 && lastTouch < 2)
+        {
+            if (Input.touchCount == 0)
+            {
+                lastTouch = 0;
+            }
+            // adds up the timer everytime the user holds the left mouse button/one finger touch in mobile device
+            if (Input.GetMouseButton(MOUSE_RIGHT_BUTTON))
+            {
+                holdTimer++;
+            }
+
+            // if the user hold for more than 3 frame, record the mouse x-axis
+            if (Input.GetMouseButton(MOUSE_RIGHT_BUTTON) && holdTimer > 3)
+            {
+                holdTimer++;
+                xAxis = Input.GetAxis("Mouse X");
+                speed = xAxis;
+            }
+            // else the user is not holding the mouse click anymore, begin calculating the lerp speed 
+            else
+            {
+                var i = Time.deltaTime * LerpSpeed;
+                speed = Mathf.Lerp(speed, 0, i);
+            }
+
+            // if the user release the mouse/touch, reset the timer
+            if (Input.GetMouseButtonUp(MOUSE_RIGHT_BUTTON))
+            {
+                holdTimer = 0;
+            }
+            // rotate the object
+            transform.Rotate(0.0f, speed * LerpSpeed, 0.0f, Space.World);
+        }
+        else
+        {
+            lastTouch = Input.touchCount;
+            speed = 0;
+        }
+    }
+
     private void LateUpdate()
     {
         mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, zoom, ZoomSmoothing);
-    }
-
-    private void HideMapSection()
-    {
-        var positionZ = transform.position.z;
-        var positionX = transform.position.x;
-
-        switch (overviewRotation)
-        {
-            case OverviewRotation.Northward:
-                ShowAllMeshes();
-                foreach (var mesh in meshes)
-                {
-                    if (mesh.gameObject.transform.position.z < positionZ)
-                    {
-                        mesh.enabled = false;
-                    }
-                }
-                break;
-            case OverviewRotation.Eastward:
-                ShowAllMeshes();
-                foreach (var mesh in meshes)
-                {
-                    if (mesh.gameObject.transform.position.x < positionX)
-                    {
-                        mesh.enabled = false;
-                    }
-                }
-                break;
-            case OverviewRotation.Westward:
-                ShowAllMeshes();
-                foreach (var mesh in meshes)
-                {
-                    if (mesh.gameObject.transform.position.x > positionX)
-                    {
-                        mesh.enabled = false;
-                    }
-                }
-                break;
-            case OverviewRotation.Southward:
-                ShowAllMeshes();
-                foreach (var mesh in meshes)
-                {
-                    if (mesh.gameObject.transform.position.z > positionZ)
-                    {
-                        mesh.enabled = false;
-                    }
-                }
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
-    }
-
-    private void ShowAllMeshes()
-    {
-        foreach (var mesh in meshes)
-        {
-            mesh.enabled = true;
-        }
     }
 
     private enum OverviewRotation
