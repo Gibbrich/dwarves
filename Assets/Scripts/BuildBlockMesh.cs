@@ -28,7 +28,7 @@ public class BuildBlockMesh : MonoBehaviour
 
                 GameObject block = Instantiate(blockPrefab, blockPosition, Quaternion.identity);
                 block.transform.parent = transform;
-                Combine(block);
+//                Combine(block);
             }
         }
     }

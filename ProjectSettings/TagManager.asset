@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Hidable
   - Environment
+  - Markup
   - MapModeOnly
   layers:
   - Default

@@ -44,15 +44,6 @@ public class CameraManager : MonoBehaviour
     private float zoom;
 
     [Range(0, 1)] public float CameraRigRotationSpeed = 0.25f;
-    private Quaternion targetRotation;
-    private bool isRotating;
-
-    private List<Transform> overviewPoints;
-    private Vector3 targetPosition;
-    private bool isMoving;
-
-    private OverviewRotation overviewRotation;
-    private List<MeshRenderer> meshes;
 
     // variable that determine the speed of lerping (deceleration)
     public float LerpSpeed = 2.0f;
@@ -71,17 +62,6 @@ public class CameraManager : MonoBehaviour
     private void Awake()
     {
         mainCamera = GetComponentInChildren<Camera>();
-        overviewRotation = OverviewRotation.Northward;
-
-        // get all objects, which can be faded
-        meshes = new List<MeshRenderer>();
-        foreach (GameObject environmentObject in GameObject.FindGameObjectsWithTag("Hidable"))
-        {
-            meshes.AddRange(environmentObject.GetComponentsInChildren<MeshRenderer>());
-        }
-
-        overviewPoints =
-            new List<Transform>(GameObject.Find("TargetCameraRigMovement").GetComponentsInChildren<Transform>());
     }
 
     // Use this for initialization
@@ -96,140 +76,12 @@ public class CameraManager : MonoBehaviour
     {
         horizontalRotation();
         
-        // center camera
-        if (Input.GetKey(KeyCode.LeftControl) && Input.GetKeyDown(KeyCode.Keypad5))
-        {
-            float rotationY;
-            switch (overviewRotation)
-            {
-                case OverviewRotation.Northward:
-                    rotationY = 0;
-                    break;
-                case OverviewRotation.Eastward:
-                    rotationY = 90;
-                    break;
-                case OverviewRotation.Westward:
-                    rotationY = -90;
-                    break;
-                case OverviewRotation.Southward:
-                    rotationY = 180;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-
-            // reset cameraRotation angles
-            targetAngles = Vector3.zero;
-            followAngles = Vector3.zero;
-            transform.localEulerAngles = new Vector3(10, rotationY, 0);
-        }
-
         // camera zoom in/out
         if (Math.Abs(Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS)) > 0)
         {
             zoom -= Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS) * ZoomSpeed;
             zoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
         }
-
-        // overview rotation
-        // todo change rotation trigger from key to UI button
-        if (Input.GetKeyDown(KeyCode.Q))
-        {
-            RotateOverview(90);
-            MoveOverviewPoint();
-        }
-        else if (Input.GetKeyDown(KeyCode.E))
-        {
-            RotateOverview(-90);
-            MoveOverviewPoint();
-        }
-
-        if (isRotating)
-        {
-            if (Quaternion.Angle(targetRotation, transform.rotation) > 0.01f)
-            {
-                transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, CameraRigRotationSpeed);
-            }
-            else
-            {
-                transform.rotation = targetRotation;
-                isRotating = false;
-            }
-        }
-
-        if (isMoving)
-        {
-            if (Vector3.Distance(targetPosition, transform.position) > 0.01f)
-            {
-                transform.position = Vector3.Lerp(transform.position, targetPosition, CameraRigRotationSpeed);
-            }
-            else
-            {
-                transform.position = targetPosition;
-                isMoving = false;
-            }
-        }
-    }
-
-    private void RotateOverview(float angle)
-    {
-        // change limitations for camera rotation according to changed overview
-        Vector3 originalRotationVector = originalRotation.eulerAngles;
-        originalRotationVector.y += angle;
-        originalRotation = Quaternion.Euler(originalRotationVector);
-
-        if (isRotating)
-        {
-            Vector3 targetRotationVector = targetRotation.eulerAngles;
-            targetRotation = Quaternion.Euler(targetRotationVector.x, targetRotationVector.y + angle,
-                targetRotationVector.z);
-        }
-        else
-        {
-            isRotating = true;
-            Vector3 currentRotationVector = transform.rotation.eulerAngles;
-            targetRotation = Quaternion.Euler(currentRotationVector.x, currentRotationVector.y + angle,
-                currentRotationVector.z);
-        }
-
-        // assume that rotate we can only by 90 degrees in every direction
-        switch (overviewRotation)
-        {
-            case OverviewRotation.Northward:
-                overviewRotation = angle > 0 ? OverviewRotation.Eastward : OverviewRotation.Westward;
-                break;
-            case OverviewRotation.Eastward:
-                overviewRotation = angle > 0 ? OverviewRotation.Southward : OverviewRotation.Northward;
-                break;
-            case OverviewRotation.Westward:
-                overviewRotation = angle > 0 ? OverviewRotation.Northward : OverviewRotation.Southward;
-                break;
-            case OverviewRotation.Southward:
-                overviewRotation = angle > 0 ? OverviewRotation.Westward : OverviewRotation.Eastward;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
-    }
-
-    private void MoveOverviewPoint()
-    {
-        // move overview point
-        // todo list of predefined overview points - temporal decision. Need to implement algorithm for
-        // searching nearest overview point
-        float nearestDistance = float.NaN;
-        Vector3 tempTargetPosition = new Vector3();
-        foreach (Transform point in overviewPoints)
-        {
-            if (float.IsNaN(nearestDistance) || Vector3.Distance(transform.position, point.position) < nearestDistance)
-            {
-                tempTargetPosition = point.position;
-                nearestDistance = Vector3.Distance(transform.position, point.transform.position);
-            }
-        }
-
-        targetPosition = tempTargetPosition;
-        isMoving = true;
     }
 
     private void horizontalRotation()
@@ -278,13 +130,5 @@ public class CameraManager : MonoBehaviour
     private void LateUpdate()
     {
         mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, zoom, ZoomSmoothing);
-    }
-
-    private enum OverviewRotation
-    {
-        Northward,
-        Eastward,
-        Westward,
-        Southward
     }
 }
