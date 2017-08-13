@@ -5,12 +5,13 @@ using UnityEngine;
 
 public class MarkupTonnel : MonoBehaviour
 {
-    public GameObject TonnelMouseoverMarkup;
+    private GameObject TonnelMouseoverMarkup;
     public GameObject TonnelMarkup;
 
     // Use this for initialization
     void Start()
     {
+        TonnelMouseoverMarkup = GameObject.Find("TonnelMouseOverMarkup");
         TonnelMouseoverMarkup.SetActive(false);
     }
 

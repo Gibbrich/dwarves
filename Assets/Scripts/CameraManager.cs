@@ -77,11 +77,11 @@ public class CameraManager : MonoBehaviour
         horizontalRotation();
         
         // camera zoom in/out
-        if (Math.Abs(Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS)) > 0)
-        {
-            zoom -= Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS) * ZoomSpeed;
-            zoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
-        }
+//        if (Math.Abs(Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS)) > 0)
+//        {
+//            zoom -= Input.GetAxis(MOUSE_SCROLL_WHEEL_AXIS) * ZoomSpeed;
+//            zoom = Mathf.Clamp(zoom, MinZoom, MaxZoom);
+//        }
     }
 
     private void horizontalRotation()

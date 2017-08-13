@@ -9,12 +9,10 @@ public class CameraMovement : MonoBehaviour
     private const string VERTICAL_AXIS = "Vertical";
     
     public float MovementSpeed = 3f;
-    private GameObject cameraRig;
-    
+
     // Use this for initialization
     void Start()
     {
-        cameraRig = GameObject.Find("CameraRig");
     }
 
     // Update is called once per frame
@@ -24,21 +22,20 @@ public class CameraMovement : MonoBehaviour
         float v = Input.GetAxisRaw(VERTICAL_AXIS);
         if (v > 0)
         {
-            Debug.Log(Camera.main.transform.forward);
-            Move(Camera.main.transform.forward);
+            Move(transform.forward);
         }
         else if (v < 0)
         {
-            Move(-Camera.main.transform.forward);
+            Move(-transform.forward);
         }
 
         if (h > 0)
         {
-            Move(Camera.main.transform.right);
+            Move(transform.right);
         }
         else if (h < 0)
         {
-            Move(-Camera.main.transform.right);
+            Move(-transform.right);
         }
 
         if (Input.GetKey(KeyCode.X))
