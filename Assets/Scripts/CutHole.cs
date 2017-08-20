@@ -19,7 +19,7 @@ public class CutHole : MonoBehaviour
         {
             RaycastHit hit;
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out hit, 1000f))
+            if (Physics.Raycast(ray, out hit, 1000f) && hit.transform.GetComponent<CutHole>() == this)
             {
                 int hitTri = hit.triangleIndex;
 
@@ -54,6 +54,7 @@ public class CutHole : MonoBehaviour
                     shared2 = p2;
                 }
 
+                // find hypotenuse vertices indices
                 int v1 = FindVertex(shared1);
                 int v2 = FindVertex(shared2);
 
@@ -61,12 +62,22 @@ public class CutHole : MonoBehaviour
                 DeleteSquare(hitTri, neighbourTriangle);
                 
                 // add new block
-                Vector3 blockPosition = hit.point + hit.normal / 2.0f;
-                blockPosition.x = (float) Math.Round(blockPosition.x, MidpointRounding.AwayFromZero);
-                blockPosition.y = (float) Math.Round(blockPosition.y, MidpointRounding.AwayFromZero);
-                blockPosition.z = (float) Math.Round(blockPosition.z, MidpointRounding.AwayFromZero);
+                Vector3 hypoVertex1 = vertices[v1] + transform.position;
+                Vector3 hypoVertex2 = vertices[v2] + transform.position;
+                Vector3 squareCenter = (hypoVertex1 + hypoVertex2) / 2.0f;
+                
+                // squareCenter always moved from the cube center on 0.5 units
+                // magnitude of hit.normal is always equals 1
+                // as cube size can be differ than 1, for correct discovering new block center position
+                // need subtract squareCenter distance from cube scale and multiply by hit.normal
+                float multiplier = transform.localScale.x - 0.5f;
+                Vector3 blockPosition = squareCenter + hit.normal * multiplier;
 
-                Instantiate(blockPrefab, blockPosition, Quaternion.identity);
+                GameObject block = Instantiate(blockPrefab, blockPosition, Quaternion.identity);
+                block.transform.parent = transform;
+//                Combine(block);
+                
+                // delete
             }
         }
     }
@@ -146,30 +157,29 @@ public class CutHole : MonoBehaviour
 
         return -1;
     }
-
-    private void DeleteTri(int index)
+    
+    private void Combine(GameObject block)
     {
-        Destroy(GetComponent<MeshCollider>());
-        Mesh mesh = GetComponent<MeshFilter>().mesh;
-        int[] oldTriangles = mesh.triangles;
-        int[] newTriangles = new int[oldTriangles.Length - 3];
+        MeshFilter[] meshFilters = GetComponentsInChildren<MeshFilter>();
+        CombineInstance[] combine = new CombineInstance[meshFilters.Length];
+        Destroy(gameObject.GetComponent<MeshCollider>());
 
         int i = 0;
-        int j = 0;
-        while (j < mesh.triangles.Length)
+        while (i < meshFilters.Length)
         {
-            if (j != index * 3)
-            {
-                newTriangles[i++] = oldTriangles[j++];
-                newTriangles[i++] = oldTriangles[j++];
-                newTriangles[i++] = oldTriangles[j++];
-            }
-            else
-            {
-                j += 3;
-            }
+            combine[i].mesh = meshFilters[i].sharedMesh;
+            combine[i].transform = meshFilters[i].transform.localToWorldMatrix;
+            meshFilters[i].gameObject.SetActive(false);
+            i++;
         }
-        GetComponent<MeshFilter>().mesh.triangles = newTriangles;
+
+        gameObject.GetComponent<MeshFilter>().mesh = new Mesh();
+        gameObject.GetComponent<MeshFilter>().mesh.CombineMeshes(combine, true);
+        gameObject.GetComponent<MeshFilter>().mesh.RecalculateBounds();
+        gameObject.GetComponent<MeshFilter>().mesh.RecalculateNormals();
         gameObject.AddComponent<MeshCollider>();
+        gameObject.SetActive(true);
+        
+        Destroy(block);
     }
 }
